@@ -9,6 +9,7 @@ import { Footer } from '../components/Footer';
 import { Product } from '../types/product';
 import { productsService } from '../services/productsService';
 import { categoriesService, DEFAULT_CATEGORIES } from '../services/categoriesService';
+import { settingsService } from '../services/settingsService';
 import { STORE_CONFIG } from '../config/store';
 import { MessageCircle, RefreshCw } from 'lucide-react';
 import { createGeneralWhatsAppLink } from '../utils/whatsapp';
@@ -16,6 +17,7 @@ import { createGeneralWhatsAppLink } from '../utils/whatsapp';
 export const HomePage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [whatsappPhone, setWhatsappPhone] = useState<string>(settingsService.getWhatsAppPhoneSync());
   const [loading, setLoading] = useState(true);
 
   // Filtros
@@ -26,16 +28,18 @@ export const HomePage: React.FC = () => {
 
   const brands = STORE_CONFIG.brands;
 
-  // Carrega produtos ativos e categorias
+  // Carrega produtos ativos, categorias e telefone configurado
   const loadData = async () => {
     setLoading(true);
     try {
-      const [prodsData, catsData] = await Promise.all([
+      const [prodsData, catsData, phoneData] = await Promise.all([
         productsService.fetchProducts(true),
         categoriesService.fetchCategories(),
+        settingsService.fetchWhatsAppPhone(),
       ]);
       setProducts(prodsData);
       setCategories(catsData);
+      setWhatsappPhone(phoneData);
     } catch (err) {
       console.error('Erro ao carregar dados do catálogo:', err);
     } finally {
@@ -89,18 +93,18 @@ export const HomePage: React.FC = () => {
       <div>
         <Header />
 
-        {/* Hero Section Acolhedora (Boas-vindas sem contadores) */}
+        {/* Hero Section Acolhedora com a mensagem correta */}
         <section className="bg-gradient-to-b from-white to-[#faf8f6] border-b border-[#eae4de] py-8 sm:py-12 px-4 text-center">
           <div className="max-w-3xl mx-auto space-y-4">
             <h2 className="text-2xl sm:text-4xl font-serif italic text-[#222222] tracking-tight">
-              Seja bem-vinda ao Catálogo Angelita!
+              Seja bem-vinda ao catálogo da Angelita!
             </h2>
             <p className="text-sm sm:text-base text-[#666666] max-w-xl mx-auto leading-relaxed">
               Confira nossos cosméticos e produtos a pronta entrega selecionados com carinho. Escolha seus favoritos e faça seu pedido direto pelo WhatsApp.
             </p>
             <div className="pt-1">
               <a
-                href={createGeneralWhatsAppLink()}
+                href={createGeneralWhatsAppLink(whatsappPhone)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-[#25d366] hover:bg-[#1ebe5d] text-white font-semibold text-sm px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all cursor-pointer"

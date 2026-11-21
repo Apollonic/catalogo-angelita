@@ -13,20 +13,24 @@ import {
   Cloud,
   Database,
   Tags,
+  MessageCircle,
 } from 'lucide-react';
 import { Product, formatCurrency } from '../types/product';
 import { productsService } from '../services/productsService';
 import { categoriesService, DEFAULT_CATEGORIES } from '../services/categoriesService';
+import { settingsService } from '../services/settingsService';
 import { authService } from '../services/authService';
 import { isSupabaseConfigured } from '../services/supabase';
 import { STORE_CONFIG } from '../config/store';
 import { ProductFormModal } from '../components/ProductFormModal';
 import { CategoryManagerModal } from '../components/CategoryManagerModal';
+import { WhatsAppSettingsModal } from '../components/WhatsAppSettingsModal';
 
 export const SellerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [whatsappPhone, setWhatsappPhone] = useState<string>(settingsService.getWhatsAppPhoneSync());
   const [loading, setLoading] = useState(true);
 
   // Filtros
@@ -39,17 +43,20 @@ export const SellerDashboardPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
 
-  // Carrega produtos e categorias
+  // Carrega produtos, categorias e telefone do WhatsApp
   const loadData = async () => {
     setLoading(true);
     try {
-      const [prodsData, catsData] = await Promise.all([
+      const [prodsData, catsData, phoneData] = await Promise.all([
         productsService.fetchProducts(false),
         categoriesService.fetchCategories(),
+        settingsService.fetchWhatsAppPhone(),
       ]);
       setProducts(prodsData);
       setCategories(catsData);
+      setWhatsappPhone(phoneData);
     } catch (err) {
       console.error('Erro ao carregar dados do painel:', err);
     } finally {
@@ -183,6 +190,13 @@ export const SellerDashboardPage: React.FC = () => {
     showToast(`Categoria "${name}" removida.`);
   };
 
+  // Ação de Salvar WhatsApp
+  const handleSaveWhatsApp = async (newPhone: string) => {
+    const clean = await settingsService.updateWhatsAppPhone(newPhone);
+    setWhatsappPhone(clean);
+    showToast(`Número do WhatsApp atualizado para +${clean}!`);
+  };
+
   const openCreateModal = () => {
     setEditingProduct(null);
     setIsModalOpen(true);
@@ -212,7 +226,7 @@ export const SellerDashboardPage: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-[#222222]">Painel da Vendedora</span>
+                <span className="text-base font-bold text-[#222222]">Painel da Angelita</span>
                 <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-[#f5ede8] text-[#a66e58]">
                   Gestão
                 </span>
@@ -299,11 +313,16 @@ export const SellerDashboardPage: React.FC = () => {
           </div>
 
           <div className="bg-white border border-[#eae4de] rounded-xl p-4 shadow-xs">
-            <span className="text-xs font-medium text-[#666666] block">Esgotados</span>
-            <span className="text-2xl font-bold text-rose-600 mt-1 block">
-              {metrics.outOfStock}
+            <span className="text-xs font-medium text-[#666666] block">WhatsApp de Pedidos</span>
+            <span className="text-base font-bold text-emerald-600 mt-1 block truncate">
+              +{whatsappPhone}
             </span>
-            <span className="text-[11px] text-[#888888] mt-0.5 block">precisam de reposição</span>
+            <button
+              onClick={() => setIsWhatsAppModalOpen(true)}
+              className="text-[11px] text-[#a66e58] hover:underline mt-0.5 block cursor-pointer font-medium"
+            >
+              Alterar número
+            </button>
           </div>
         </section>
 
@@ -353,12 +372,23 @@ export const SellerDashboardPage: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Botão Configurar WhatsApp */}
+            <button
+              type="button"
+              onClick={() => setIsWhatsAppModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-[#eae4de] hover:border-emerald-500 text-[#444444] hover:text-emerald-700 text-xs sm:text-sm font-semibold rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
+              title="Alterar número do WhatsApp de atendimento"
+            >
+              <MessageCircle className="w-4 h-4 text-[#25d366] fill-current" />
+              <span>WhatsApp</span>
+            </button>
+
             {/* Botão Gerenciar Categorias */}
             <button
               type="button"
               onClick={() => setIsCategoryModalOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-white border border-[#eae4de] hover:border-[#a66e58] text-[#444444] hover:text-[#a66e58] text-xs sm:text-sm font-semibold rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-[#eae4de] hover:border-[#a66e58] text-[#444444] hover:text-[#a66e58] text-xs sm:text-sm font-semibold rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
               title="Adicionar, renomear ou excluir categorias"
             >
               <Tags className="w-4 h-4 text-[#a66e58]" />
@@ -550,6 +580,14 @@ export const SellerDashboardPage: React.FC = () => {
         onAddCategory={handleAddCategory}
         onRenameCategory={handleRenameCategory}
         onDeleteCategory={handleDeleteCategory}
+      />
+
+      {/* Modal de Configuração do WhatsApp */}
+      <WhatsAppSettingsModal
+        isOpen={isWhatsAppModalOpen}
+        onClose={() => setIsWhatsAppModalOpen(false)}
+        currentPhone={whatsappPhone}
+        onSave={handleSaveWhatsApp}
       />
     </div>
   );
