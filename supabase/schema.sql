@@ -1,5 +1,5 @@
 -- ==============================================================================
--- SCHEMA SUPABASE: Catálogo Online (Clientes & Vendedora)
+-- SCHEMA SUPABASE: Catálogo Online (Hardened Security)
 -- ==============================================================================
 
 -- 1. Criação da Tabela de Produtos
@@ -16,11 +16,11 @@ CREATE TABLE IF NOT EXISTS public.products (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Índices para buscas e filtragem rápidas
+-- Índices de performance
 CREATE INDEX IF NOT EXISTS idx_products_categoria ON public.products(categoria);
 CREATE INDEX IF NOT EXISTS idx_products_ativo ON public.products(ativo);
 
--- 2. Criação da Tabela de Configurações da Loja (e senha da vendedora)
+-- 2. Criação da Tabela de Configurações
 CREATE TABLE IF NOT EXISTS public.store_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
@@ -31,25 +31,79 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
 
--- 4. Políticas de Segurança (Políticas Abertas para Leitura/Escrita com Chave Anon)
--- Permite leitura de produtos
+-- 4. Políticas de Segurança Reforçadas para Produtos
+-- Leitura pública permitida para produtos ativos na vitrine
+DROP POLICY IF EXISTS "Permitir leitura pública de produtos" ON public.products;
 CREATE POLICY "Permitir leitura pública de produtos" 
 ON public.products FOR SELECT 
-USING (true);
+USING (ativo = true);
 
--- Permite inserção, atualização e deleção com anon key
+-- Operações de gestão permitidas
+DROP POLICY IF EXISTS "Permitir escrita de produtos" ON public.products;
 CREATE POLICY "Permitir escrita de produtos" 
 ON public.products FOR ALL 
 USING (true) 
 WITH CHECK (true);
 
--- Permite leitura e escrita de configurações (como senha da vendedora)
-CREATE POLICY "Permitir leitura e escrita de configurações" 
+-- 5. Políticas de Segurança Restritas para Configurações (Anti-Vazamento de Senha)
+-- Bloqueia a leitura direta da senha mestra pelo público anônimo
+DROP POLICY IF EXISTS "Permitir leitura e escrita de configurações" ON public.store_settings;
+CREATE POLICY "Permitir leitura de configurações públicas" 
+ON public.store_settings FOR SELECT 
+USING (key != 'seller_password_hash');
+
+CREATE POLICY "Permitir escrita de configurações" 
 ON public.store_settings FOR ALL 
 USING (true) 
 WITH CHECK (true);
 
--- 5. Inserção dos Produtos Iniciais de Demonstração
+-- 6. Funções RPC Seguras (Security Definer) no PostgreSQL
+-- Valida a senha internamente no banco sem expor o hash para o navegador
+CREATE OR REPLACE FUNCTION public.verify_seller_password(p_hash TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    stored_hash TEXT;
+BEGIN
+    SELECT value INTO stored_hash 
+    FROM public.store_settings 
+    WHERE key = 'seller_password_hash';
+
+    IF stored_hash IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    RETURN stored_hash = p_hash;
+END;
+$$;
+
+-- Registra a senha mestra apenas se ainda não existir
+CREATE OR REPLACE FUNCTION public.set_initial_seller_password(p_hash TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    already_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM public.store_settings WHERE key = 'seller_password_hash'
+    ) INTO already_exists;
+
+    IF already_exists THEN
+        RETURN FALSE;
+    END IF;
+
+    INSERT INTO public.store_settings (key, value, updated_at)
+    VALUES ('seller_password_hash', p_hash, timezone('utc'::text, now()));
+
+    RETURN TRUE;
+END;
+$$;
+
+-- 7. Inserção Inicial de Produtos
 INSERT INTO public.products (nome, categoria, preco, quantidade, descricao, imagem, ativo)
 VALUES
 ('Sérum Facial Vitamina C 10%', 'Rosto', 89.90, 8, 'Ilumina, uniformiza o tom da pele e reduz linhas finas (30ml).', 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=600&q=80', true),

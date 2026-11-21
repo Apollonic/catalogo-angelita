@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, Eye, EyeOff, ArrowLeft, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Lock, Eye, EyeOff, ArrowLeft, ShieldCheck, AlertCircle, Clock } from 'lucide-react';
 import { authService } from '../services/authService';
 
 export const SellerAuthPage: React.FC = () => {
@@ -15,6 +15,9 @@ export const SellerAuthPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Rate limit lockout state
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
+
   useEffect(() => {
     // Se já estiver autenticado, vai direto para o painel
     if (authService.isAuthenticated()) {
@@ -22,22 +25,51 @@ export const SellerAuthPage: React.FC = () => {
       return;
     }
 
-    authService
-      .hasPasswordConfigured()
-      .then((configured) => {
+    const checkStatus = async () => {
+      try {
+        const rateLimit = authService.getRateLimit();
+        if (rateLimit.isLocked) {
+          setLockoutSeconds(rateLimit.remainingSeconds);
+        }
+
+        const configured = await authService.hasPasswordConfigured();
         setHasPassword(configured);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error('Erro ao checar configuração de senha:', err);
-      })
-      .finally(() => {
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    checkStatus();
   }, [navigate]);
+
+  // Timer regressivo de bloqueio por tentativas
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setLockoutSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setErrorMessage('');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [lockoutSeconds]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (lockoutSeconds > 0) {
+      setErrorMessage(`Acesso bloqueado por segurança. Aguarde ${lockoutSeconds} segundos.`);
+      return;
+    }
 
     if (!password.trim()) {
       setErrorMessage('Por favor, informe a senha.');
@@ -49,8 +81,8 @@ export const SellerAuthPage: React.FC = () => {
     try {
       if (!hasPassword) {
         // Fluxo de Primeiro Acesso
-        if (password.trim().length < 4) {
-          setErrorMessage('A senha deve ter no mínimo 4 caracteres.');
+        if (password.trim().length < 6) {
+          setErrorMessage('Por segurança, a senha mestra deve ter no mínimo 6 caracteres.');
           setSubmitting(false);
           return;
         }
@@ -69,12 +101,27 @@ export const SellerAuthPage: React.FC = () => {
         if (isValid) {
           navigate('/vendedora/painel', { replace: true });
         } else {
-          setErrorMessage('Senha incorreta. Tente novamente.');
+          const rateLimit = authService.getRateLimit();
+          if (rateLimit.isLocked) {
+            setLockoutSeconds(rateLimit.remainingSeconds);
+            setErrorMessage('Muitas tentativas incorretas. Acesso bloqueado por 5 minutos por segurança.');
+          } else {
+            const remainingAttempts = 5 - rateLimit.attempts;
+            setErrorMessage(
+              `Senha incorreta. Você tem mais ${remainingAttempts} ${
+                remainingAttempts === 1 ? 'tentativa' : 'tentativas'
+              } antes do bloqueio.`
+            );
+          }
         }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao processar senha.';
       setErrorMessage(msg);
+      const rateLimit = authService.getRateLimit();
+      if (rateLimit.isLocked) {
+        setLockoutSeconds(rateLimit.remainingSeconds);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -84,11 +131,13 @@ export const SellerAuthPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#faf8f6] flex items-center justify-center p-4">
         <div className="text-center text-[#666666] text-sm">
-          Verificando credenciais...
+          Verificando credenciais seguras...
         </div>
       </div>
     );
   }
+
+  const isLocked = lockoutSeconds > 0;
 
   return (
     <div className="min-h-screen bg-[#faf8f6] flex flex-col justify-between p-4 sm:p-6">
@@ -116,11 +165,23 @@ export const SellerAuthPage: React.FC = () => {
             <p className="text-xs sm:text-sm text-[#666666] mt-1.5 leading-relaxed">
               {hasPassword
                 ? 'Digite sua senha para gerenciar produtos, preços e estoque da loja.'
-                : 'Primeiro acesso detectado! Crie a senha mestra para proteger o seu painel de gestão.'}
+                : 'Primeiro acesso detectado! Crie sua senha mestra segura (mínimo de 6 caracteres).'}
             </p>
           </div>
 
-          {errorMessage && (
+          {/* Alerta de Bloqueio por Força Bruta */}
+          {isLocked && (
+            <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 text-xs text-rose-800">
+              <Clock className="w-5 h-5 text-rose-600 shrink-0 animate-pulse" />
+              <div>
+                <strong className="block font-semibold">Acesso bloqueado temporariamente</strong>
+                <span>Aguarde {lockoutSeconds} segundos para tentar novamente.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Mensagem de Erro Convencional */}
+          {errorMessage && !isLocked && (
             <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2.5 text-xs text-rose-700">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMessage}</span>
@@ -130,21 +191,23 @@ export const SellerAuthPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-[#444444] mb-1.5">
-                {hasPassword ? 'Sua Senha' : 'Nova Senha'}
+                {hasPassword ? 'Sua Senha' : 'Nova Senha Mestra'}
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  disabled={isLocked}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={hasPassword ? 'Digite a senha...' : 'Mínimo de 4 caracteres...'}
-                  className="w-full pl-3 pr-10 py-2.5 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] placeholder-[#666666]/60 focus:outline-none focus:border-[#a66e58] focus:ring-1 focus:ring-[#a66e58] transition-all"
-                  autoFocus
+                  placeholder={hasPassword ? 'Digite a senha...' : 'Mínimo de 6 caracteres...'}
+                  className="w-full pl-3 pr-10 py-2.5 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] placeholder-[#666666]/60 focus:outline-none focus:border-[#a66e58] focus:ring-1 focus:ring-[#a66e58] disabled:bg-gray-100 disabled:opacity-60 transition-all"
+                  autoFocus={!isLocked}
                 />
                 <button
                   type="button"
+                  disabled={isLocked}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-[#222222] p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-[#222222] p-1 disabled:opacity-40"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -159,38 +222,41 @@ export const SellerAuthPage: React.FC = () => {
                 </label>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  disabled={isLocked}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repita a senha para confirmar..."
-                  className="w-full px-3 py-2.5 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] placeholder-[#666666]/60 focus:outline-none focus:border-[#a66e58] focus:ring-1 focus:ring-[#a66e58] transition-all"
+                  className="w-full px-3 py-2.5 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] placeholder-[#666666]/60 focus:outline-none focus:border-[#a66e58] focus:ring-1 focus:ring-[#a66e58] disabled:bg-gray-100 disabled:opacity-60 transition-all"
                 />
               </div>
             )}
 
             <button
               type="submit"
-              disabled={submitting}
-              className="w-full py-3 px-4 bg-[#a66e58] hover:bg-[#8f5c48] disabled:opacity-60 text-white font-semibold text-sm rounded-xl transition-all shadow-sm hover:shadow cursor-pointer"
+              disabled={submitting || isLocked}
+              className="w-full py-3 px-4 bg-[#a66e58] hover:bg-[#8f5c48] disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition-all shadow-sm hover:shadow cursor-pointer"
             >
               {submitting
                 ? 'Validando...'
+                : isLocked
+                ? `Bloqueado (${lockoutSeconds}s)`
                 : hasPassword
                 ? 'Entrar no Painel'
                 : 'Salvar Senha e Acessar'}
             </button>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-[#eae4de] text-center">
+          <div className="mt-6 pt-5 border-t border-[#eae4de] text-center space-y-1.5">
             <span className="inline-flex items-center gap-1.5 text-[11px] text-[#888888]">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Acesso restrito • Sem necessidade de e-mail ou cadastro complexo
+              Proteção Criptográfica SHA-256 • Bloqueio Anti-Força Bruta
             </span>
           </div>
         </div>
       </div>
 
       <div className="py-4 text-center text-xs text-[#888888]">
-        Aura Cosméticos — Gestão de Catálogo
+        Aura Cosméticos — Gestão Segura de Catálogo
       </div>
     </div>
   );
