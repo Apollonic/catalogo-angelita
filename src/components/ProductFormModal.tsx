@@ -19,7 +19,7 @@ interface ProductFormModalProps {
   onClose: () => void;
   product?: Product | null;
   categories?: string[];
-  onSave: (data: Partial<Product> & { nome: string; categoria: string; preco: number; quantidade: number }) => Promise<void>;
+  onSave: (data: Partial<Product> & { nome: string; marca: string; categoria: string; preco: number; quantidade: number }) => Promise<void>;
   onQuickAddCategory?: (name: string) => Promise<void>;
 }
 
@@ -32,6 +32,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   onQuickAddCategory,
 }) => {
   const [nome, setNome] = useState('');
+  const [marca, setMarca] = useState('Natura');
   const [categoria, setCategoria] = useState('');
   const [preco, setPreco] = useState('');
   const [quantidade, setQuantidade] = useState('5');
@@ -50,11 +51,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCatInput, setNewCatInput] = useState('');
 
+  const brandOptions = ['Natura', 'Avon', 'O Boticário', 'Outra'];
+
   useEffect(() => {
     const defaultCat = categories.length > 0 ? categories[0] : 'Rosto';
 
     if (product) {
       setNome(product.nome);
+      setMarca(product.marca || 'Natura');
       setCategoria(product.categoria || defaultCat);
       setPreco(product.preco.toString());
       setQuantidade(product.quantidade.toString());
@@ -63,6 +67,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setAtivo(product.ativo !== false);
     } else {
       setNome('');
+      setMarca('Natura');
       setCategoria(defaultCat);
       setPreco('');
       setQuantidade('5');
@@ -155,6 +160,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       await onSave({
         id: product?.id,
         nome: nome.trim(),
+        marca: marca.trim() || 'Natura',
         categoria: categoria || categories[0] || 'Geral',
         preco: precoNum,
         quantidade: qtdNum,
@@ -203,7 +209,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               Foto do Produto
             </label>
 
-            {/* Input nativo de arquivo oculto */}
             <input
               type="file"
               ref={fileInputRef}
@@ -213,7 +218,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             />
 
             {imagem ? (
-              /* Preview da imagem selecionada */
               <div className="relative border border-[#eae4de] rounded-2xl overflow-hidden bg-[#faf8f6] p-3 flex items-center gap-4">
                 <div className="w-20 h-20 rounded-xl overflow-hidden bg-[#f2ece6] border border-[#eae4de] shrink-0">
                   <img
@@ -249,7 +253,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 </div>
               </div>
             ) : (
-              /* Área de clique para escolher da galeria ou câmera */
               <div
                 onClick={() => !processingImage && fileInputRef.current?.click()}
                 className={`border-2 border-dashed border-[#eae4de] hover:border-[#a66e58] rounded-2xl p-5 text-center cursor-pointer bg-[#faf8f6]/50 hover:bg-[#faf8f6] transition-all group ${
@@ -279,7 +282,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               </div>
             )}
 
-            {/* Alternador para quem preferir colar link da internet */}
             <div className="mt-2 flex items-center justify-between text-[11px]">
               <button
                 type="button"
@@ -304,6 +306,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             )}
           </div>
 
+          {/* Nome do Produto */}
           <div>
             <label className="block text-xs font-semibold text-[#444444] mb-1">
               Nome do Produto *
@@ -313,12 +316,30 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               required
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: Sérum Facial Clareador 30ml"
+              placeholder="Ex: Hidratante Corporal TodoDia 400ml"
               className="w-full px-3 py-2 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] focus:outline-none focus:border-[#a66e58] transition-all"
             />
           </div>
 
+          {/* Marca e Categoria */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[#444444] mb-1">
+                Marca do Produto *
+              </label>
+              <select
+                value={marca}
+                onChange={(e) => setMarca(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] focus:outline-none focus:border-[#a66e58] transition-all font-medium"
+              >
+                {brandOptions.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold text-[#444444]">
@@ -375,7 +396,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 </select>
               )}
             </div>
+          </div>
 
+          {/* Preço e Estoque */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-[#444444] mb-1">
                 Preço (R$) *
@@ -389,9 +413,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 className="w-full px-3 py-2 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] focus:outline-none focus:border-[#a66e58] transition-all"
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-[#444444] mb-1">
                 Quantidade em Estoque *
@@ -409,21 +431,18 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 0 = Esgotado | 1 a 4 = Últimas unidades
               </span>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-[#444444] mb-1">
-                Visibilidade no Site
-              </label>
-              <label className="inline-flex items-center gap-2 mt-2 text-xs text-[#444444] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={ativo}
-                  onChange={(e) => setAtivo(e.target.checked)}
-                  className="w-4 h-4 rounded border-[#eae4de] accent-[#a66e58] cursor-pointer"
-                />
-                <span className="font-medium">Mostrar produto no catálogo</span>
-              </label>
-            </div>
+          <div>
+            <label className="inline-flex items-center gap-2 text-xs text-[#444444] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ativo}
+                onChange={(e) => setAtivo(e.target.checked)}
+                className="w-4 h-4 rounded border-[#eae4de] accent-[#a66e58] cursor-pointer"
+              />
+              <span className="font-medium">Mostrar produto no catálogo das clientes</span>
+            </label>
           </div>
 
           <div>

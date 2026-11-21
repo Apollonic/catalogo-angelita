@@ -3,13 +3,14 @@ export type ProductBadgeStatus = 'disponivel' | 'ultimas' | 'esgotado';
 export interface Product {
   id: string;
   nome: string;
+  marca: string; // Ex: Natura, Avon, O Boticário
   categoria: string;
   preco: number;
   quantidade: number;
-  status?: ProductBadgeStatus; // Calculado dinamicamente com base na quantidade
+  status?: ProductBadgeStatus;
   descricao: string;
   imagem: string;
-  ativo: boolean; // Controla se aparece no site para as clientes
+  ativo: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -20,6 +21,7 @@ export interface StoreConfig {
   phoneWhatsapp: string;
   defaultMessage: string;
   categories: string[];
+  brands: string[];
 }
 
 // Utilitário para determinar o badge com base na quantidade em estoque

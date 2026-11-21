@@ -121,9 +121,14 @@ export const ProductDetailPage: React.FC = () => {
             {/* Informações e Botão de Ação */}
             <div className="flex flex-col justify-between space-y-6">
               <div className="space-y-4">
-                <span className="inline-block text-xs font-semibold uppercase tracking-wider text-[#a66e58] bg-[#f5ede8] px-3 py-1 rounded-full">
-                  {product.categoria}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-[#a66e58] px-3 py-1 rounded-full shadow-2xs">
+                    {product.marca}
+                  </span>
+                  <span className="inline-block text-xs font-semibold uppercase tracking-wider text-[#a66e58] bg-[#f5ede8] px-3 py-1 rounded-full border border-[#eae4de]">
+                    {product.categoria}
+                  </span>
+                </div>
 
                 <h1 className="text-2xl sm:text-3xl font-bold text-[#222222] leading-tight">
                   {product.nome}
@@ -154,7 +159,7 @@ export const ProductDetailPage: React.FC = () => {
                 <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-[#666666]">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-[#a66e58]" />
-                    <span>Produto 100% Original</span>
+                    <span>Produto 100% Original ({product.marca})</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Truck className="w-4 h-4 text-[#a66e58]" />

@@ -14,7 +14,12 @@ function getLocalProducts(): Product[] {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_PRODUCTS));
       return INITIAL_PRODUCTS;
     }
-    return JSON.parse(raw) as Product[];
+    const parsed = JSON.parse(raw) as Product[];
+    // Garante que cada produto tenha a marca preenchida
+    return parsed.map((p, idx) => ({
+      ...p,
+      marca: p.marca || INITIAL_PRODUCTS[idx]?.marca || 'Natura',
+    }));
   } catch (error) {
     console.error('Erro ao ler produtos do localStorage:', error);
     return INITIAL_PRODUCTS;
@@ -45,6 +50,7 @@ export const productsService = {
 
         return (data || []).map((p) => ({
           ...p,
+          marca: p.marca || 'Natura',
           preco: Number(p.preco),
           quantidade: Number(p.quantidade),
           status: getProductStockStatus(Number(p.quantidade)),
@@ -59,6 +65,7 @@ export const productsService = {
     const filtered = onlyActive ? local.filter((p) => p.ativo) : local;
     return filtered.map((p) => ({
       ...p,
+      marca: p.marca || 'Natura',
       status: getProductStockStatus(p.quantidade),
     }));
   },
@@ -73,6 +80,7 @@ export const productsService = {
 
         return {
           ...data,
+          marca: data.marca || 'Natura',
           preco: Number(data.preco),
           quantidade: Number(data.quantidade),
           status: getProductStockStatus(Number(data.quantidade)),
@@ -87,6 +95,7 @@ export const productsService = {
     if (!product) return null;
     return {
       ...product,
+      marca: product.marca || 'Natura',
       status: getProductStockStatus(product.quantidade),
     };
   },
@@ -172,9 +181,12 @@ export const productsService = {
     return true;
   },
 
-  // Salva produto completo com sanitização estrita anti-XSS e validação de imagem
-  async saveProduct(productData: Partial<Product> & { nome: string; categoria: string; preco: number }): Promise<Product> {
+  // Salva produto completo com marca, sanitização estrita anti-XSS e validação de imagem
+  async saveProduct(
+    productData: Partial<Product> & { nome: string; categoria: string; preco: number; marca?: string }
+  ): Promise<Product> {
     const sanitizedName = sanitizeText(productData.nome, 120);
+    const sanitizedMarca = sanitizeText(productData.marca ?? 'Natura', 50);
     const sanitizedCategory = sanitizeText(productData.categoria, 50);
     const sanitizedDesc = sanitizeText(productData.descricao ?? '', 1000);
 
@@ -184,6 +196,7 @@ export const productsService = {
 
     const safeData = {
       nome: sanitizedName || 'Produto sem nome',
+      marca: sanitizedMarca || 'Natura',
       categoria: sanitizedCategory || 'Geral',
       preco: Math.max(0, Math.min(999999, Number(productData.preco))),
       quantidade: Math.max(0, Math.min(100000, Math.floor(Number(productData.quantidade ?? 0)))),
@@ -207,6 +220,7 @@ export const productsService = {
           if (error) throw error;
           return {
             ...data,
+            marca: data.marca || 'Natura',
             status: getProductStockStatus(data.quantidade),
           };
         } else {
@@ -223,6 +237,7 @@ export const productsService = {
           if (error) throw error;
           return {
             ...data,
+            marca: data.marca || 'Natura',
             status: getProductStockStatus(data.quantidade),
           };
         }

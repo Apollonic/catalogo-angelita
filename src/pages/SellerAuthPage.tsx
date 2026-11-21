@@ -256,7 +256,7 @@ export const SellerAuthPage: React.FC = () => {
       </div>
 
       <div className="py-4 text-center text-xs text-[#888888]">
-        Aura Cosméticos — Gestão Segura de Catálogo
+        Catálogo Angelita — Gestão de Catálogo
       </div>
     </div>
   );

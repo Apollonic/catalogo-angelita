@@ -28,7 +28,10 @@ export const SellerDashboardPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
+
+  // Filtros
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBrand, setSelectedBrand] = useState('Todas');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -80,22 +83,28 @@ export const SellerDashboardPage: React.FC = () => {
     return { totalProducts, totalUnits, activeProducts, outOfStock };
   }, [products]);
 
-  // Produtos filtrados por categoria e busca
+  // Produtos filtrados por marca, categoria e busca
   const filteredProducts = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
 
     return products.filter((p) => {
+      const matchesBrand =
+        selectedBrand === 'Todas' ||
+        p.marca.toLowerCase() === selectedBrand.toLowerCase();
+
       const matchesCategory =
-        selectedCategory === 'Todas' || p.categoria === selectedCategory;
+        selectedCategory === 'Todas' ||
+        p.categoria.toLowerCase() === selectedCategory.toLowerCase();
 
       const matchesSearch =
         term === '' ||
         p.nome.toLowerCase().includes(term) ||
+        p.marca.toLowerCase().includes(term) ||
         p.descricao.toLowerCase().includes(term);
 
-      return matchesCategory && matchesSearch;
+      return matchesBrand && matchesCategory && matchesSearch;
     });
-  }, [products, searchTerm, selectedCategory]);
+  }, [products, searchTerm, selectedBrand, selectedCategory]);
 
   // Ajuste rápido de estoque (+1 / -1)
   const handleStockChange = async (product: Product, delta: number) => {
@@ -128,7 +137,7 @@ export const SellerDashboardPage: React.FC = () => {
 
   // Salvar produto (criar ou editar via modal)
   const handleSaveProduct = async (
-    data: Partial<Product> & { nome: string; categoria: string; preco: number; quantidade: number }
+    data: Partial<Product> & { nome: string; marca: string; categoria: string; preco: number; quantidade: number }
   ) => {
     await productsService.saveProduct(data);
     const prods = await productsService.fetchProducts(false);
@@ -156,7 +165,6 @@ export const SellerDashboardPage: React.FC = () => {
   const handleRenameCategory = async (oldName: string, newName: string) => {
     const updated = await categoriesService.renameCategory(oldName, newName);
     setCategories(updated);
-    // Atualiza os produtos na memória
     setProducts((prev) =>
       prev.map((p) => (p.categoria === oldName ? { ...p, categoria: newName } : p))
     );
@@ -299,8 +307,8 @@ export const SellerDashboardPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Barra de Filtros e Ações Principais */}
-        <section className="bg-white border border-[#eae4de] rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Barra de Filtros por Marca, Categoria e Ações Principais */}
+        <section className="bg-white border border-[#eae4de] rounded-2xl p-4 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {/* Campo de Busca */}
             <div className="relative flex-1">
@@ -309,10 +317,26 @@ export const SellerDashboardPage: React.FC = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Filtrar por nome do produto..."
+                placeholder="Filtrar por nome, marca ou categoria..."
                 className="w-full pl-9 pr-3 py-2 bg-[#faf8f6] border border-[#eae4de] rounded-xl text-xs sm:text-sm text-[#222222] focus:outline-none focus:border-[#a66e58]"
               />
             </div>
+
+            {/* Filtro por Marca */}
+            <select
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+              className="px-3 py-2 bg-[#faf8f6] border border-[#eae4de] rounded-xl text-xs sm:text-sm text-[#222222] focus:outline-none focus:border-[#a66e58] font-medium"
+            >
+              <option value="Todas">Todas as Marcas</option>
+              {STORE_CONFIG.brands
+                .filter((b) => b !== 'Todas')
+                .map((brand) => (
+                  <option key={brand} value={brand}>
+                    {brand}
+                  </option>
+                ))}
+            </select>
 
             {/* Filtro por Categoria */}
             <select
@@ -360,7 +384,7 @@ export const SellerDashboardPage: React.FC = () => {
               Produtos Cadastrados ({filteredProducts.length})
             </h3>
             <span className="text-xs text-[#666666]">
-              Ajuste as quantidades e a disponibilidade com um clique
+              Ajuste as quantidades, marcas e disponibilidade com um clique
             </span>
           </div>
 
@@ -400,8 +424,11 @@ export const SellerDashboardPage: React.FC = () => {
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#a66e58] bg-[#f5ede8] px-2 py-0.5 rounded-md">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-[#a66e58] bg-[#f5ede8] px-2 py-0.5 rounded-md border border-[#eae4de]">
+                            {p.marca}
+                          </span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#666666] bg-gray-100 px-2 py-0.5 rounded-md">
                             {p.categoria}
                           </span>
                           {!p.ativo && (

@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Sparkles className="w-5 h-5" />
         </Link>
         <Link to="/" className="block">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#222222] hover:text-[#a66e58] transition-colors">
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-[#222222] hover:text-[#a66e58] transition-colors">
             {name}
           </h1>
         </Link>

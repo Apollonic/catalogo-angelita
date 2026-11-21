@@ -57,14 +57,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Detalhes do Produto */}
         <div className="p-4 pb-2">
-          <span className="block text-[11px] font-medium uppercase tracking-wider text-[#666666]">
-            {product.categoria}
-          </span>
+          <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-[#666666]">
+            <span className="font-semibold text-[#a66e58]">{product.marca}</span>
+            <span>•</span>
+            <span>{product.categoria}</span>
+          </div>
           <Link
             to={`/produto/${product.id}`}
             className="hover:text-[#a66e58] transition-colors"
           >
-            <h2 className="text-base font-semibold text-[#222222] mt-0.5 leading-snug line-clamp-1">
+            <h2 className="text-base font-semibold text-[#222222] mt-1 leading-snug line-clamp-1">
               {product.nome}
             </h2>
           </Link>
