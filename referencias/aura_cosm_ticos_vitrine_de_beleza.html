@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aura Cosméticos — Catálogo</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-[#faf8f6] text-[#222222] font-['Inter',sans-serif] antialiased pb-24 min-h-screen">
+
+  <!-- Cabeçalho Simples e Acolhedor -->
+  <header class="bg-white border-b border-[#eae4de] py-6 px-4 text-center">
+    <div class="max-w-5xl mx-auto">
+      <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#faf8f6] border border-[#eae4de] text-[#a66e58] mb-2">
+        <i class="fa-solid fa-spa"></i>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#222222]">
+        Aura Cosméticos — Catálogo
+      </h1>
+      <p class="text-sm sm:text-base text-[#666666] mt-1">
+        Confira os produtos disponíveis, valores e peça direto pelo WhatsApp
+      </p>
+    </div>
+  </header>
+
+  <!-- Barra de Controles Limpa -->
+  <section class="max-w-5xl mx-auto px-4 mt-6 mb-6 space-y-4">
+    <!-- Campo de Busca Instantânea -->
+    <div class="relative">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666666] text-sm pointer-events-none"></i>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Buscar produto por nome ou descrição..."
+        class="w-full pl-10 pr-10 py-3 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] placeholder-[#666666]/70 focus:outline-none focus:border-[#a66e58] transition-colors shadow-sm"
+      />
+      <button
+        id="clearSearchBtn"
+        type="button"
+        aria-label="Limpar busca"
+        class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-[#666666] hover:text-[#222222] p-1"
+      >
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+
+    <!-- Filtros por Categoria e Disponibilidade -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-2" id="categoryButtons" role="tablist" aria-label="Categorias">
+        <button type="button" data-cat="Todos" class="cat-btn px-4 py-2 rounded-full text-sm font-medium bg-[#a66e58] text-white border border-[#a66e58] transition-colors cursor-pointer">
+          Todos
+        </button>
+        <button type="button" data-cat="Rosto" class="cat-btn px-4 py-2 rounded-full text-sm font-medium bg-white text-[#222222] border border-[#eae4de] hover:border-[#a66e58] transition-colors cursor-pointer">
+          Rosto
+        </button>
+        <button type="button" data-cat="Pele" class="cat-btn px-4 py-2 rounded-full text-sm font-medium bg-white text-[#222222] border border-[#eae4de] hover:border-[#a66e58] transition-colors cursor-pointer">
+          Pele
+        </button>
+        <button type="button" data-cat="Cabelo" class="cat-btn px-4 py-2 rounded-full text-sm font-medium bg-white text-[#222222] border border-[#eae4de] hover:border-[#a66e58] transition-colors cursor-pointer">
+          Cabelo
+        </button>
+        <button type="button" data-cat="Perfumaria" class="cat-btn px-4 py-2 rounded-full text-sm font-medium bg-white text-[#222222] border border-[#eae4de] hover:border-[#a66e58] transition-colors cursor-pointer">
+          Perfumaria
+        </button>
+      </div>
+
+      <label class="inline-flex items-center gap-2 text-sm text-[#666666] cursor-pointer select-none py-1">
+        <input
+          type="checkbox"
+          id="onlyAvailable"
+          class="w-4 h-4 rounded border-[#eae4de] accent-[#a66e58] cursor-pointer"
+        />
+        <span>Mostrar apenas disponíveis</span>
+      </label>
+    </div>
+  </section>
+
+  <!-- Grade Responsiva de Produtos -->
+  <main class="max-w-5xl mx-auto px-4">
+    <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
+      <!-- Cards gerados via JavaScript -->
+    </div>
+  </main>
+
+  <!-- Botão Flutuante Discreto no Canto Inferior Direito -->
+  <a
+    id="generalWpp"
+    href="https://wa.me/5585999999999"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 bg-[#25d366] hover:bg-[#1ebe5d] text-white font-semibold text-sm px-4 py-3 rounded-full shadow-lg transition-colors"
+  >
+    <i class="fa-brands fa-whatsapp text-lg"></i>
+    <span>Falar no WhatsApp</span>
+  </a>
+
+  <script>
+    // Número de WhatsApp da loja (DDI + DDD + Número)
+    const TELEFONE_WHATSAPP = "5585999999999";
+
+    // 9 produtos distribuídos entre Rosto, Pele, Cabelo e Perfumaria
+    const PRODUTOS = [
+      {
+        nome: "Sérum Facial Vitamina C 10%",
+        categoria: "Rosto",
+        preco: "R$ 89,90",
+        status: "disponivel",
+        descricao: "Ilumina, uniformiza o tom da pele e reduz linhas finas (30ml).",
+        imagem: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        nome: "Gel de Limpeza Facial Suave",
+        categoria: "Rosto",
+        preco: "R$ 54,00",
+        status: "disponivel",
+        descricao: "Limpa sem ressecar, ideal para uso diário manhã e noite (150ml).",
+        imagem: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        nome: "Hidratante Facial Ácido Hialurônico",
+        categoria: "Rosto",
+        preco: "R$ 74,90",
+        status: "esgotado",
+        descricao: "Hidratação profunda com toque seco e rápida absorção (50g).",
+        imagem: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        nome: "Loção Hidratante Corporal Karité",
+        categoria: "Pele",
+        preco: "R$ 68,00",
+        status: "disponivel",
+        descricao: "Nutrição intensa por 24h com manteiga de karité e óleo de amêndoas (250ml).",
+        imagem: "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        nome: "Esfoliante Corporal Café & Açúcar",
+        categoria: "Pele",
+        preco: "R$ 62,50",
+        status: "ultimas",
+        descricao: "Renova a textura da pele e deixa toque macio imediato (200g).",
+        imagem: "https://images.unsplash.com/photo-1570194065650-d99fb4b38b15?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        nome: "Óleo Reparador Capilar Argan",
+        categoria: "Cabelo",
+        preco: "R$ 79,00",
+        status: "disponivel",
+        descricao: "Controla o frizz, sela as pontas e dá brilho sem pesar (60ml).",
+        imagem: "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        nome: "Máscara Capilar Hidratação Intensa",
+        categoria: "Cabelo",
+        preco: "R$ 84,90",
+        status: "esgotado",
+        descricao: "Recupera fios ressecados em 5 minutos de ação (300g).",
+        imagem: "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        nome: "Eau de Parfum Flor de Íris & Baunilha",
+        categoria: "Perfumaria",
+        preco: "R$ 159,00",
+        status: "disponivel",
+        descricao: "Fragrância floral adocicada elegante com alta fixação (50ml).",
+        imagem: "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        nome: "Body Splash Brisa Cítrica",
+        categoria: "Perfumaria",
+        preco: "R$ 69,90",
+        status: "ultimas",
+        descricao: "Refrescante e leve para o pós-banho com notas de bergamota (200ml).",
+        imagem: "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=600&q=80"
+      }
+    ];
+
+    let categoriaAtual = "Todos";
+    const grid = document.getElementById("productGrid");
+    const searchInput = document.getElementById("searchInput");
+    const clearSearchBtn = document.getElementById("clearSearchBtn");
+    const onlyAvailable = document.getElementById("onlyAvailable");
+
+    // Configura link geral de atendimento no botão flutuante
+    document.getElementById("generalWpp").href =
+      `https://wa.me/${TELEFONE_WHATSAPP}?text=${encodeURIComponent("Olá! Vim pelo catálogo online da Aura Cosméticos e gostaria de atendimento.")}`;
+
+    // Gera link de WhatsApp personalizado por produto
+    function gerarLinkWhatsApp(produto) {
+      const mensagem = produto.status === "esgotado"
+        ? `Olá! Vi no catálogo da Aura Cosméticos que o produto *${produto.nome}* está esgotado. Quando chega reposição?`
+        : `Olá! Tenho interesse no produto *${produto.nome}* (${produto.preco}). Ainda está disponível?`;
+      return `https://wa.me/${TELEFONE_WHATSAPP}?text=${encodeURIComponent(mensagem)}`;
+    }
+
+    // Retorna configuração visual do selo de disponibilidade
+    function obterConfigBadge(status) {
+      if (status === "disponivel") {
+        return {
+          texto: "Disponível",
+          classes: "bg-emerald-100 text-emerald-800 border border-emerald-200"
+        };
+      }
+      if (status === "ultimas") {
+        return {
+          texto: "Últimas unidades",
+          classes: "bg-amber-100 text-amber-800 border border-amber-200"
+        };
+      }
+      return {
+        texto: "Esgotado",
+        classes: "bg-rose-100 text-rose-800 border border-rose-200"
+      };
+    }
+
+    // Renderiza a grade de produtos filtrados
+    function renderizar() {
+      const termo = searchInput.value.toLowerCase().trim();
+      const filtrarDisponiveis = onlyAvailable.checked;
+
+      const filtrados = PRODUTOS.filter((p) => {
+        const bateCategoria = categoriaAtual === "Todos" || p.categoria === categoriaAtual;
+        const bateBusca = p.nome.toLowerCase().includes(termo) || p.descricao.toLowerCase().includes(termo);
+        const bateEstoque = !filtrarDisponiveis || p.status !== "esgotado";
+        return bateCategoria && bateBusca && bateEstoque;
+      });
+
+      if (filtrados.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full bg-white border border-[#eae4de] rounded-xl py-12 px-4 text-center">
+            <p class="text-[#666666] text-sm">Nenhum produto encontrado com esses filtros.</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtrados.map((p) => {
+        const esgotado = p.status === "esgotado";
+        const badge = obterConfigBadge(p.status);
+        const fallbackUrl = `https://placehold.co/600x450/f2ece6/222222?text=${encodeURIComponent(p.nome)}`;
+
+        return `
+          <article class="bg-white border border-[#eae4de] rounded-xl overflow-hidden flex flex-col justify-between shadow-sm">
+            <div>
+              <!-- Foto com selo de disponibilidade no canto superior esquerdo -->
+              <div class="relative h-48 bg-[#f2ece6] overflow-hidden">
+                <span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-md text-xs font-semibold ${badge.classes}">
+                  ${badge.texto}
+                </span>
+                <img
+                  src="${p.imagem}"
+                  alt="${p.nome}"
+                  loading="lazy"
+                  onerror="this.onerror=null;this.src='${fallbackUrl}';"
+                  class="w-full h-full object-cover ${esgotado ? "opacity-75" : ""}"
+                />
+              </div>
+
+              <!-- Informações do produto -->
+              <div class="p-4 pb-2">
+                <span class="block text-[11px] font-medium uppercase tracking-wider text-[#666666]">
+                  ${p.categoria}
+                </span>
+                <h2 class="text-base font-semibold text-[#222222] mt-0.5 leading-snug">
+                  ${p.nome}
+                </h2>
+                <p class="text-xs sm:text-sm text-[#666666] mt-1.5 leading-relaxed">
+                  ${p.descricao}
+                </p>
+              </div>
+            </div>
+
+            <!-- Preço e botão direto para o WhatsApp -->
+            <div class="p-4 pt-2">
+              <div class="text-xl font-bold text-[#222222] mb-3">
+                ${p.preco}
+              </div>
+              <a
+                href="${gerarLinkWhatsApp(p)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="w-full py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+                  esgotado
+                    ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                    : "bg-[#25d366] hover:bg-[#1ebe5d] text-white"
+                }"
+              >
+                <i class="fa-brands fa-whatsapp text-base"></i>
+                <span>${esgotado ? "Consultar reposição" : "Pedir no WhatsApp"}</span>
+              </a>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    // Eventos dos botões de categoria
+    document.querySelectorAll(".cat-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".cat-btn").forEach((b) => {
+          b.classList.remove("bg-[#a66e58]", "text-white", "border-[#a66e58]");
+          b.classList.add("bg-white", "text-[#222222]", "border-[#eae4de]");
+        });
+        btn.classList.remove("bg-white", "text-[#222222]", "border-[#eae4de]");
+        btn.classList.add("bg-[#a66e58]", "text-white", "border-[#a66e58]");
+
+        categoriaAtual = btn.dataset.cat;
+        renderizar();
+      });
+    });
+
+    // Busca instantânea e botão de limpar
+    searchInput.addEventListener("input", () => {
+      clearSearchBtn.classList.toggle("hidden", searchInput.value.length === 0);
+      renderizar();
+    });
+
+    clearSearchBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      clearSearchBtn.classList.add("hidden");
+      renderizar();
+    });
+
+    onlyAvailable.addEventListener("change", renderizar);
+
+    // Inicializa a vitrine
+    renderizar();
+  </script>
+</body>
+</html>
