@@ -1,0 +1,64 @@
+-- ==============================================================================
+-- SCHEMA SUPABASE: Catálogo Online (Clientes & Vendedora)
+-- ==============================================================================
+
+-- 1. Criação da Tabela de Produtos
+CREATE TABLE IF NOT EXISTS public.products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome TEXT NOT NULL,
+    categoria TEXT NOT NULL,
+    preco NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    quantidade INTEGER NOT NULL DEFAULT 0,
+    descricao TEXT DEFAULT '',
+    imagem TEXT DEFAULT '',
+    ativo BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Índices para buscas e filtragem rápidas
+CREATE INDEX IF NOT EXISTS idx_products_categoria ON public.products(categoria);
+CREATE INDEX IF NOT EXISTS idx_products_ativo ON public.products(ativo);
+
+-- 2. Criação da Tabela de Configurações da Loja (e senha da vendedora)
+CREATE TABLE IF NOT EXISTS public.store_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 3. Habilitação de RLS (Row Level Security)
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
+
+-- 4. Políticas de Segurança (Políticas Abertas para Leitura/Escrita com Chave Anon)
+-- Permite leitura de produtos
+CREATE POLICY "Permitir leitura pública de produtos" 
+ON public.products FOR SELECT 
+USING (true);
+
+-- Permite inserção, atualização e deleção com anon key
+CREATE POLICY "Permitir escrita de produtos" 
+ON public.products FOR ALL 
+USING (true) 
+WITH CHECK (true);
+
+-- Permite leitura e escrita de configurações (como senha da vendedora)
+CREATE POLICY "Permitir leitura e escrita de configurações" 
+ON public.store_settings FOR ALL 
+USING (true) 
+WITH CHECK (true);
+
+-- 5. Inserção dos Produtos Iniciais de Demonstração
+INSERT INTO public.products (nome, categoria, preco, quantidade, descricao, imagem, ativo)
+VALUES
+('Sérum Facial Vitamina C 10%', 'Rosto', 89.90, 8, 'Ilumina, uniformiza o tom da pele e reduz linhas finas (30ml).', 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=600&q=80', true),
+('Gel de Limpeza Facial Suave', 'Rosto', 54.00, 12, 'Limpa sem ressecar, ideal para uso diário manhã e noite (150ml).', 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=600&q=80', true),
+('Hidratante Facial Ácido Hialurônico', 'Rosto', 74.90, 0, 'Hidratação profunda com toque seco e rápida absorção (50g).', 'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=600&q=80', true),
+('Loção Hidratante Corporal Karité', 'Pele', 68.00, 7, 'Nutrição intensa por 24h com manteiga de karité e óleo de amêndoas (250ml).', 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=600&q=80', true),
+('Esfoliante Corporal Café & Açúcar', 'Pele', 62.50, 3, 'Renova a textura da pele e deixa toque macio imediato (200g).', 'https://images.unsplash.com/photo-1570194065650-d99fb4b38b15?auto=format&fit=crop&w=600&q=80', true),
+('Óleo Reparador Capilar Argan', 'Cabelo', 79.00, 6, 'Controla o frizz, sela as pontas e dá brilho sem pesar (60ml).', 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&w=600&q=80', true),
+('Máscara Capilar Hidratação Intensa', 'Cabelo', 84.90, 0, 'Recupera fios ressecados em 5 minutos de ação (300g).', 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=600&q=80', true),
+('Eau de Parfum Flor de Íris & Baunilha', 'Perfumaria', 159.00, 5, 'Fragrância floral adocicada elegante com alta fixação (50ml).', 'https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=600&q=80', true),
+('Body Splash Brisa Cítrica', 'Perfumaria', 69.90, 2, 'Refrescante e leve para o pós-banho com notas de bergamota (200ml).', 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=600&q=80', true)
+ON CONFLICT DO NOTHING;
