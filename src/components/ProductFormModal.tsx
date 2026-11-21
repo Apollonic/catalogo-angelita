@@ -8,6 +8,7 @@ import {
   Camera,
   Link as LinkIcon,
   RefreshCw,
+  Plus,
 } from 'lucide-react';
 import { Product } from '../types/product';
 import { STORE_CONFIG } from '../config/store';
@@ -17,17 +18,21 @@ interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   product?: Product | null;
+  categories?: string[];
   onSave: (data: Partial<Product> & { nome: string; categoria: string; preco: number; quantidade: number }) => Promise<void>;
+  onQuickAddCategory?: (name: string) => Promise<void>;
 }
 
 export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   isOpen,
   onClose,
   product,
+  categories = STORE_CONFIG.categories.filter((c) => c !== 'Todos'),
   onSave,
+  onQuickAddCategory,
 }) => {
   const [nome, setNome] = useState('');
-  const [categoria, setCategoria] = useState('Rosto');
+  const [categoria, setCategoria] = useState('');
   const [preco, setPreco] = useState('');
   const [quantidade, setQuantidade] = useState('5');
   const [descricao, setDescricao] = useState('');
@@ -41,10 +46,16 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Criação rápida de categoria
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCatInput, setNewCatInput] = useState('');
+
   useEffect(() => {
+    const defaultCat = categories.length > 0 ? categories[0] : 'Rosto';
+
     if (product) {
       setNome(product.nome);
-      setCategoria(product.categoria);
+      setCategoria(product.categoria || defaultCat);
       setPreco(product.preco.toString());
       setQuantidade(product.quantidade.toString());
       setDescricao(product.descricao || '');
@@ -52,7 +63,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setAtivo(product.ativo !== false);
     } else {
       setNome('');
-      setCategoria('Rosto');
+      setCategoria(defaultCat);
       setPreco('');
       setQuantidade('5');
       setDescricao('');
@@ -61,7 +72,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
     setError('');
     setShowUrlInput(false);
-  }, [product, isOpen]);
+    setIsAddingCategory(false);
+    setNewCatInput('');
+  }, [product, isOpen, categories]);
 
   if (!isOpen) return null;
 
@@ -70,7 +83,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validação básica do tipo
     if (!file.type.startsWith('image/')) {
       setError('Por favor, selecione um arquivo de imagem válido (JPEG, PNG, etc).');
       return;
@@ -87,7 +99,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setError(msg);
     } finally {
       setProcessingImage(false);
-      // Limpa o input para permitir selecionar a mesma foto se desejar
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -98,6 +109,23 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setImagem('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleQuickAddCategory = async () => {
+    const trimmed = newCatInput.trim();
+    if (!trimmed) return;
+
+    if (onQuickAddCategory) {
+      try {
+        await onQuickAddCategory(trimmed);
+        setCategoria(trimmed);
+        setIsAddingCategory(false);
+        setNewCatInput('');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Erro ao adicionar categoria.';
+        setError(msg);
+      }
     }
   };
 
@@ -127,7 +155,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       await onSave({
         id: product?.id,
         nome: nome.trim(),
-        categoria,
+        categoria: categoria || categories[0] || 'Geral',
         preco: precoNum,
         quantidade: qtdNum,
         descricao: descricao.trim(),
@@ -292,22 +320,60 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#444444] mb-1">
-                Categoria *
-              </label>
-              <select
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] focus:outline-none focus:border-[#a66e58] transition-all"
-              >
-                {STORE_CONFIG.categories
-                  .filter((c) => c !== 'Todos')
-                  .map((cat) => (
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-[#444444]">
+                  Categoria *
+                </label>
+                {onQuickAddCategory && !isAddingCategory && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingCategory(true)}
+                    className="text-[11px] text-[#a66e58] hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Nova</span>
+                  </button>
+                )}
+              </div>
+
+              {isAddingCategory ? (
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={newCatInput}
+                    onChange={(e) => setNewCatInput(e.target.value)}
+                    placeholder="Nome da categoria..."
+                    className="flex-1 px-2.5 py-1.5 bg-white border border-[#a66e58] rounded-xl text-xs text-[#222222] focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleQuickAddCategory}
+                    className="px-2.5 py-1.5 bg-[#a66e58] text-white text-xs font-semibold rounded-xl hover:bg-[#8f5c48] cursor-pointer"
+                  >
+                    Salvar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingCategory(false)}
+                    className="px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-100 rounded-xl cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={categoria}
+                  onChange={(e) => setCategoria(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-[#eae4de] rounded-xl text-sm text-[#222222] focus:outline-none focus:border-[#a66e58] transition-all"
+                >
+                  {categories.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
                   ))}
-              </select>
+                </select>
+              )}
             </div>
 
             <div>

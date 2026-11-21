@@ -8,32 +8,37 @@ import { FloatingWhatsApp } from '../components/FloatingWhatsApp';
 import { Footer } from '../components/Footer';
 import { Product } from '../types/product';
 import { productsService } from '../services/productsService';
-import { STORE_CONFIG } from '../config/store';
+import { categoriesService, DEFAULT_CATEGORIES } from '../services/categoriesService';
 import { Sparkles, MessageCircle, RefreshCw } from 'lucide-react';
 import { createGeneralWhatsAppLink } from '../utils/whatsapp';
 
 export const HomePage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
 
-  // Carrega produtos ativos para o catálogo
-  const loadProducts = async () => {
+  // Carrega produtos ativos e categorias
+  const loadData = async () => {
     setLoading(true);
     try {
-      const data = await productsService.fetchProducts(true);
-      setProducts(data);
+      const [prodsData, catsData] = await Promise.all([
+        productsService.fetchProducts(true),
+        categoriesService.fetchCategories(),
+      ]);
+      setProducts(prodsData);
+      setCategories(catsData);
     } catch (err) {
-      console.error('Erro ao carregar catálogo:', err);
+      console.error('Erro ao carregar dados do catálogo:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadProducts();
+    loadData();
   }, []);
 
   // Contagem de produtos por categoria para o Hero
@@ -44,6 +49,11 @@ export const HomePage: React.FC = () => {
     });
     return counts;
   }, [products]);
+
+  // Lista de categorias com a opção 'Todos'
+  const filterCategories = useMemo(() => {
+    return ['Todos', ...categories];
+  }, [categories]);
 
   // Filtra produtos de forma reativa
   const filteredProducts = useMemo(() => {
@@ -75,7 +85,7 @@ export const HomePage: React.FC = () => {
       <div>
         <Header />
 
-        {/* Hero Section Elegante (Inspirado no Lovable) */}
+        {/* Hero Section Elegante */}
         <section className="bg-gradient-to-b from-white to-[#faf8f6] border-b border-[#eae4de] py-8 sm:py-12 px-4 text-center">
           <div className="max-w-3xl mx-auto space-y-4">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#f5ede8] text-[#a66e58] border border-[#eae4de]">
@@ -93,26 +103,26 @@ export const HomePage: React.FC = () => {
                 href={createGeneralWhatsAppLink()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-[#25d366] hover:bg-[#1ebe5d] text-white font-semibold text-sm px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all"
+                className="inline-flex items-center gap-2 bg-[#25d366] hover:bg-[#1ebe5d] text-white font-semibold text-sm px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all cursor-pointer"
               >
                 <MessageCircle className="w-4 h-4 fill-current" />
                 <span>Fale no WhatsApp</span>
               </a>
             </div>
 
-            {/* Atalhos com contagem por categoria */}
+            {/* Atalhos com contagem por categoria dinâmica */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-4 max-w-2xl mx-auto">
-              {['Rosto', 'Pele', 'Cabelo', 'Perfumaria'].map((cat) => (
+              {categories.slice(0, 4).map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`p-3 rounded-xl border text-left transition-all ${
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                     selectedCategory === cat
                       ? 'bg-white border-[#a66e58] shadow-sm ring-1 ring-[#a66e58]'
                       : 'bg-white/80 border-[#eae4de] hover:border-[#a66e58]/50 hover:bg-white'
                   }`}
                 >
-                  <span className="block text-xs font-semibold text-[#222222]">{cat}</span>
+                  <span className="block text-xs font-semibold text-[#222222] truncate">{cat}</span>
                   <span className="text-[11px] text-[#666666]">
                     {categoryCounts[cat] || 0} {categoryCounts[cat] === 1 ? 'produto' : 'produtos'}
                   </span>
@@ -132,7 +142,7 @@ export const HomePage: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CategoryFilter
-              categories={STORE_CONFIG.categories}
+              categories={filterCategories}
               activeCategory={selectedCategory}
               onSelectCategory={setSelectedCategory}
             />

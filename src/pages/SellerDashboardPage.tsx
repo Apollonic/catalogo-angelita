@@ -12,17 +12,21 @@ import {
   CheckCircle2,
   Cloud,
   Database,
+  Tags,
 } from 'lucide-react';
 import { Product, formatCurrency } from '../types/product';
 import { productsService } from '../services/productsService';
+import { categoriesService, DEFAULT_CATEGORIES } from '../services/categoriesService';
 import { authService } from '../services/authService';
 import { isSupabaseConfigured } from '../services/supabase';
 import { STORE_CONFIG } from '../config/store';
 import { ProductFormModal } from '../components/ProductFormModal';
+import { CategoryManagerModal } from '../components/CategoryManagerModal';
 
 export const SellerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
@@ -31,22 +35,27 @@ export const SellerDashboardPage: React.FC = () => {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
-  // Carrega todos os produtos (inclusive os inativos)
-  const loadProducts = async () => {
+  // Carrega produtos e categorias
+  const loadData = async () => {
     setLoading(true);
     try {
-      const data = await productsService.fetchProducts(false);
-      setProducts(data);
+      const [prodsData, catsData] = await Promise.all([
+        productsService.fetchProducts(false),
+        categoriesService.fetchCategories(),
+      ]);
+      setProducts(prodsData);
+      setCategories(catsData);
     } catch (err) {
-      console.error('Erro ao carregar produtos:', err);
+      console.error('Erro ao carregar dados do painel:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadProducts();
+    loadData();
   }, []);
 
   const showToast = (message: string) => {
@@ -93,7 +102,6 @@ export const SellerDashboardPage: React.FC = () => {
     const newQty = Math.max(0, product.quantidade + delta);
     if (newQty === product.quantidade) return;
 
-    // Atualização otimista no estado local
     setProducts((prev) =>
       prev.map((p) => (p.id === product.id ? { ...p, quantidade: newQty } : p))
     );
@@ -119,9 +127,12 @@ export const SellerDashboardPage: React.FC = () => {
   };
 
   // Salvar produto (criar ou editar via modal)
-  const handleSaveProduct = async (data: Partial<Product> & { nome: string; categoria: string; preco: number; quantidade: number }) => {
+  const handleSaveProduct = async (
+    data: Partial<Product> & { nome: string; categoria: string; preco: number; quantidade: number }
+  ) => {
     await productsService.saveProduct(data);
-    await loadProducts();
+    const prods = await productsService.fetchProducts(false);
+    setProducts(prods);
     showToast(data.id ? 'Produto atualizado com sucesso!' : 'Novo produto cadastrado com sucesso!');
   };
 
@@ -133,6 +144,35 @@ export const SellerDashboardPage: React.FC = () => {
     await productsService.deleteProduct(product.id);
     setProducts((prev) => prev.filter((p) => p.id !== product.id));
     showToast(`Produto "${product.nome}" removido.`);
+  };
+
+  // Ações de Gestão de Categorias
+  const handleAddCategory = async (name: string) => {
+    const updated = await categoriesService.addCategory(name);
+    setCategories(updated);
+    showToast(`Categoria "${name}" adicionada com sucesso!`);
+  };
+
+  const handleRenameCategory = async (oldName: string, newName: string) => {
+    const updated = await categoriesService.renameCategory(oldName, newName);
+    setCategories(updated);
+    // Atualiza os produtos na memória
+    setProducts((prev) =>
+      prev.map((p) => (p.categoria === oldName ? { ...p, categoria: newName } : p))
+    );
+    if (selectedCategory === oldName) {
+      setSelectedCategory(newName);
+    }
+    showToast(`Categoria renomeada para "${newName}"!`);
+  };
+
+  const handleDeleteCategory = async (name: string) => {
+    const updated = await categoriesService.deleteCategory(name);
+    setCategories(updated);
+    if (selectedCategory === name) {
+      setSelectedCategory('Todas');
+    }
+    showToast(`Categoria "${name}" removida.`);
   };
 
   const openCreateModal = () => {
@@ -213,7 +253,7 @@ export const SellerDashboardPage: React.FC = () => {
             )}
           </div>
           <button
-            onClick={loadProducts}
+            onClick={loadData}
             className="hover:text-[#222222] inline-flex items-center gap-1 cursor-pointer"
             title="Recarregar dados"
           >
@@ -259,7 +299,7 @@ export const SellerDashboardPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Barra de Filtros e Ação Principal */}
+        {/* Barra de Filtros e Ações Principais */}
         <section className="bg-white border border-[#eae4de] rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {/* Campo de Busca */}
@@ -281,25 +321,36 @@ export const SellerDashboardPage: React.FC = () => {
               className="px-3 py-2 bg-[#faf8f6] border border-[#eae4de] rounded-xl text-xs sm:text-sm text-[#222222] focus:outline-none focus:border-[#a66e58]"
             >
               <option value="Todas">Todas as Categorias</option>
-              {STORE_CONFIG.categories
-                .filter((c) => c !== 'Todos')
-                .map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Botão Novo Produto */}
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a66e58] hover:bg-[#8f5c48] text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm hover:shadow transition-all cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Novo produto</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Botão Gerenciar Categorias */}
+            <button
+              type="button"
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-white border border-[#eae4de] hover:border-[#a66e58] text-[#444444] hover:text-[#a66e58] text-xs sm:text-sm font-semibold rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
+              title="Adicionar, renomear ou excluir categorias"
+            >
+              <Tags className="w-4 h-4 text-[#a66e58]" />
+              <span>Categorias</span>
+            </button>
+
+            {/* Botão Novo Produto */}
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a66e58] hover:bg-[#8f5c48] text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm hover:shadow transition-all cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Novo produto</span>
+            </button>
+          </div>
         </section>
 
         {/* Tabela / Lista de Produtos */}
@@ -458,7 +509,20 @@ export const SellerDashboardPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         product={editingProduct}
+        categories={categories}
         onSave={handleSaveProduct}
+        onQuickAddCategory={handleAddCategory}
+      />
+
+      {/* Modal de Gestão de Categorias */}
+      <CategoryManagerModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        categories={categories}
+        products={products}
+        onAddCategory={handleAddCategory}
+        onRenameCategory={handleRenameCategory}
+        onDeleteCategory={handleDeleteCategory}
       />
     </div>
   );
