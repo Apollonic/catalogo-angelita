@@ -7,4 +7,5 @@ export const STORE_CONFIG: StoreConfig = {
   defaultMessage: 'Olá, Angelita! Vim pelo catálogo online e gostaria de atendimento.',
   categories: ['Todos', 'Rosto', 'Pele', 'Cabelo', 'Perfumaria'],
   brands: ['Todas', 'Natura', 'Avon', 'O Boticário'],
+  defaultSellerPassword: 'angelita_catalogo',
 };

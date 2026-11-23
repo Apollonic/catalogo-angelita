@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
+import { STORE_CONFIG } from '../config/store';
 import {
   hashPassword,
   getRateLimitStatus,
@@ -10,6 +11,8 @@ import {
 } from '../utils/security';
 
 const LOCAL_STORAGE_PASSWORD_HASH_KEY = 'aura_seller_password_hash';
+const DEFAULT_SELLER_PASSWORD =
+  import.meta.env.VITE_SELLER_PASSWORD || STORE_CONFIG.defaultSellerPassword || 'angelita123';
 
 export const authService = {
   // Obtém status atual de bloqueio por tentativas excessivas
@@ -17,17 +20,27 @@ export const authService = {
     return getRateLimitStatus();
   },
 
-  // Verifica se a senha da vendedora já foi criada no primeiro acesso
+  // Retorna a senha padrão caso nenhuma senha personalizada tenha sido criada
+  getDefaultPassword() {
+    return DEFAULT_SELLER_PASSWORD;
+  },
+
+  // Verifica se a senha da vendedora já foi criada ou configurada
   async hasPasswordConfigured(): Promise<boolean> {
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabase.rpc('is_seller_password_set');
+        if (!error && typeof data === 'boolean') {
+          return data;
+        }
+
+        const { data: directData, error: directError } = await supabase
           .from('store_settings')
           .select('key')
           .eq('key', 'seller_password_hash')
           .maybeSingle();
 
-        if (!error && data) {
+        if (!directError && directData) {
           return true;
         }
       } catch (err) {
@@ -37,7 +50,12 @@ export const authService = {
 
     // LocalStorage fallback (usando hash seguro)
     const localHash = localStorage.getItem(LOCAL_STORAGE_PASSWORD_HASH_KEY);
-    return Boolean(localHash);
+    if (localHash) {
+      return true;
+    }
+
+    // Se temos uma senha mestre padrão configurada na loja, consideramos que já existe senha
+    return Boolean(DEFAULT_SELLER_PASSWORD);
   },
 
   // Cadastra a senha mestra inicial protegida por hash SHA-256
@@ -113,7 +131,11 @@ export const authService = {
 
     if (!isValid) {
       const localHash = localStorage.getItem(LOCAL_STORAGE_PASSWORD_HASH_KEY);
-      if (localHash && localHash === inputHash) {
+      if (localHash) {
+        if (localHash === inputHash) {
+          isValid = true;
+        }
+      } else if (DEFAULT_SELLER_PASSWORD && trimmed === DEFAULT_SELLER_PASSWORD.trim()) {
         isValid = true;
       }
     }
@@ -131,6 +153,32 @@ export const authService = {
       }
       return false;
     }
+  },
+
+  // Altera a senha mestra da vendedora
+  async changePassword(newPassword: string): Promise<boolean> {
+    const trimmed = newPassword.trim();
+    if (!trimmed || trimmed.length < 4) {
+      throw new Error('A nova senha deve ter pelo menos 4 caracteres.');
+    }
+
+    const hashed = await hashPassword(trimmed);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('store_settings').upsert({
+          key: 'seller_password_hash',
+          value: hashed,
+          updated_at: new Date().toISOString(),
+        });
+        if (error) console.warn('Erro ao atualizar senha no Supabase:', error);
+      } catch (err) {
+        console.warn('Erro ao salvar nova senha no Supabase:', err);
+      }
+    }
+
+    localStorage.setItem(LOCAL_STORAGE_PASSWORD_HASH_KEY, hashed);
+    return true;
   },
 
   // Verifica se a sessão está autenticada e não expirou

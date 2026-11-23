@@ -100,6 +100,16 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.is_seller_password_set()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN EXISTS(SELECT 1 FROM public.store_settings WHERE key = 'seller_password_hash');
+END;
+$$;
+
 -- 7. Inserção Inicial de Produtos com Marcas
 INSERT INTO public.products (nome, marca, categoria, preco, quantidade, descricao, imagem, ativo)
 VALUES

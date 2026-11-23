@@ -22,6 +22,7 @@ export interface StoreConfig {
   defaultMessage: string;
   categories: string[];
   brands: string[];
+  defaultSellerPassword?: string;
 }
 
 // Utilitário para determinar o badge com base na quantidade em estoque
