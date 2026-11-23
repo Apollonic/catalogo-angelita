@@ -46,15 +46,25 @@ USING (true)
 WITH CHECK (true);
 
 -- 5. Políticas de Segurança Restritas para Configurações (Anti-Vazamento de Senha)
+DROP POLICY IF EXISTS "Permitir escrita de configurações" ON public.store_settings;
 DROP POLICY IF EXISTS "Permitir leitura de configurações públicas" ON public.store_settings;
+
 CREATE POLICY "Permitir leitura de configurações públicas" 
 ON public.store_settings FOR SELECT 
 USING (key != 'seller_password_hash');
 
-CREATE POLICY "Permitir escrita de configurações" 
-ON public.store_settings FOR ALL 
-USING (true) 
+CREATE POLICY "Permitir inserção de configurações" 
+ON public.store_settings FOR INSERT 
 WITH CHECK (true);
+
+CREATE POLICY "Permitir atualização de configurações" 
+ON public.store_settings FOR UPDATE 
+USING (true)
+WITH CHECK (true);
+
+CREATE POLICY "Permitir exclusão de configurações" 
+ON public.store_settings FOR DELETE 
+USING (true);
 
 -- 6. Funções RPC Seguras (Security Definer) no PostgreSQL
 CREATE OR REPLACE FUNCTION public.verify_seller_password(p_hash TEXT)
