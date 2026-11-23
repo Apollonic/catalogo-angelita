@@ -73,6 +73,14 @@ Catálogo digital interativo e moderno para venda de cosméticos multimarcas (**
 
 ---
 
+## 🌐 Links Oficiais do Projeto
+
+- **Vitrine Pública (Clientes)**: [https://catalogo-angelita.netlify.app](https://catalogo-angelita.netlify.app)
+- **Painel da Vendedora**: [https://catalogo-angelita.netlify.app/vendedora](https://catalogo-angelita.netlify.app/vendedora)
+- **Repositório GitHub**: [https://github.com/Apollonic/catalogo-angelita](https://github.com/Apollonic/catalogo-angelita)
+
+---
+
 ## 🌐 Deploy Contínuo (CI/CD) no Netlify
 
 O repositório já inclui o arquivo `netlify.toml` pré-configurado com regras de build, cabeçalhos de segurança e redirecionamentos SPA.
